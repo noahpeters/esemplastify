@@ -8,7 +8,8 @@
     {
       "binding": "DB",
       "database_name": "esemplastify-ledger",
-      "migrations_dir": "migrations"
+      "migrations_dir": "migrations",
+      "database_id": "ee380da8-6bee-4b3f-ba6e-ef04629db0c9"
     }
   ],
   "r2_buckets": [

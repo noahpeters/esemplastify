@@ -4,7 +4,7 @@
 
 An independent daily AI news podcast project. This milestone implements **discovery and editorial preparation**: live RSS/Atom ingestion, provenance, a persistent story ledger, conservative clustering, explainable novelty/diversity ranking, and one substantive verification follow-up. It has no dependency on FTOPS, Cabinitron, their databases, or their credentials.
 
-**Status:** implemented and tested locally with live feeds. Cloud resources have not been provisioned and the Worker has not been deployed. There is no generated audio, published podcast feed, or automatic claim verification yet.
+**Status:** discovery is deployed at [esemplastify.gr4gwzrfq2.workers.dev](https://esemplastify.gr4gwzrfq2.workers.dev/health) and verified against live feeds. Dedicated D1, private R2, ingestion/dead-letter queues, and the half-hourly Cron trigger are provisioned. There is no generated audio, published podcast feed, or automatic claim verification yet. See [deployment evidence and operations](docs/deployment.md).
 
 ## Run locally
 
@@ -93,9 +93,9 @@ Coverage must match an item and its coverage kind in the saved episode snapshot.
 
 ## Cloud deployment runbook
 
-Existing Cloudflare authentication was checked read-only. This checkout does not reuse any existing project's resources. No account credentials or fabricated database IDs are in the repository; an unprovisioned D1 binding intentionally has no `database_id`.
+The dedicated production resources are provisioned, and `wrangler.jsonc` contains the actual Esemplastify database binding. No existing project's resources or credentials are reused. The canonical checkout is `/Users/noah/code/esemplastify`; repositories must not be placed under Documents or another iCloud-controlled directory.
 
-After reviewing the PR, provision **only** these dedicated resources in the intended account:
+The initial provisioning commands below are retained as a runbook. These resources already exist; for an ordinary update, verify identity, apply only pending migrations, then deploy. Provision **only** dedicated resources when setting up a separate environment:
 
 ```sh
 npx wrangler whoami
@@ -120,7 +120,7 @@ No unattended operating history, real 06:00 run, or real elapsed 24–48-hour ve
 - Live public-feed run: **11 feeds, 215 articles, 215 stories, 215 evidence records, nine selected items / 45 estimated minutes**. Zero stories marked covered. These local smoke counts are a single run, not a production reliability claim.
 - The proposed OECD URL returned 404 and was removed before the catalog was finalized. All 11 retained feed endpoints returned parseable feeds in the check; NIST had no recent AI items passing the seven-day window.
 - Dependency audit: zero known advisories at the time of validation.
-- GitHub Actions did not execute any steps: GitHub reports an account billing/spending-limit block. The green verification above is local; hosted CI remains blocked until that account issue is resolved.
+- The repository is public. The previously billing-blocked GitHub checks were rerun and passed before the first milestone was merged. Current rollout-PR checks are tracked separately.
 
 ## Next milestone
 
