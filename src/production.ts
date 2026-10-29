@@ -91,9 +91,10 @@ export async function produceChunk(env:Env,job:ProductionJob){
       if(object)bytes=new Uint8Array(await object.arrayBuffer());
       else{
         const response=await env.AI.run(MODEL,{text:chunk.text,speaker:pilot.speaker,encoding:'mp3',sample_rate:24000,bit_rate:48000},{returnRawResponse:true,signal:AbortSignal.timeout(90000)});
-        if(!response.ok||!response.headers.get('content-type')?.includes('audio'))throw new Error('Speech provider returned non-audio response');
+        if(!response.ok)throw new Error(`Speech provider returned non-audio response (HTTP ${response.status})`);
         bytes=new Uint8Array(await response.arrayBuffer());if(bytes.length>2*1024*1024)throw new Error('Speech chunk exceeds size limit');
-        mp3Duration(bytes);await env.EVIDENCE.put(key,bytes,{httpMetadata:{contentType:'audio/mpeg'}});
+        try{mp3Duration(bytes);}catch{throw new Error(`Invalid speech payload (HTTP ${response.status}; type ${response.headers.get('content-type')??'unspecified'}; ${bytes.length} bytes; prefix ${[...bytes.subarray(0,4)].join(',')})`);}
+        await env.EVIDENCE.put(key,bytes,{httpMetadata:{contentType:'audio/mpeg'}});
       }
       const duration=mp3Duration(bytes);
       await env.DB.prepare("UPDATE pilot_chunks SET status='ready',audio_key=?,duration_seconds=?,byte_count=?,attempts=attempts+1,last_error=NULL WHERE pilot_id=? AND ordinal=?").bind(key,duration,bytes.length,pilot.id,chunk.ordinal).run();
