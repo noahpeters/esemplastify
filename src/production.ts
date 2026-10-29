@@ -90,8 +90,8 @@ export async function produceChunk(env:Env,job:ProductionJob){
       let object=await env.EVIDENCE.get(key);let bytes:Uint8Array;
       if(object)bytes=new Uint8Array(await object.arrayBuffer());
       else{
-        const response=await env.AI.run(MODEL,{text:chunk.text,speaker:pilot.speaker,encoding:'mp3',sample_rate:24000,bit_rate:48000},{returnRawResponse:true,signal:AbortSignal.timeout(90000)});
-        if(!response.ok)throw new Error(`Speech provider returned non-audio response (HTTP ${response.status})`);
+        const response=await env.AI.run(MODEL,{text:chunk.text,speaker:pilot.speaker,encoding:'mp3',bit_rate:48000},{returnRawResponse:true,signal:AbortSignal.timeout(90000)});
+        if(!response.ok){const detail=await response.json().catch(()=>null) as {errors?:{message?:string}[]}|null;throw new Error(`Speech provider returned non-audio response (HTTP ${response.status}): ${detail?.errors?.[0]?.message?.slice(0,120)??'request rejected'}`);}
         bytes=new Uint8Array(await response.arrayBuffer());if(bytes.length>2*1024*1024)throw new Error('Speech chunk exceeds size limit');
         try{mp3Duration(bytes);}catch{throw new Error(`Invalid speech payload (HTTP ${response.status}; type ${response.headers.get('content-type')??'unspecified'}; ${bytes.length} bytes; prefix ${[...bytes.subarray(0,4)].join(',')})`);}
         await env.EVIDENCE.put(key,bytes,{httpMetadata:{contentType:'audio/mpeg'}});
