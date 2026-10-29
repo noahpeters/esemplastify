@@ -116,10 +116,11 @@ No unattended operating history, real 06:00 run, or real elapsed 24–48-hour ve
 ## Validation recorded for this milestone
 
 - TypeScript checking and Worker dry-run bundling pass.
-- 28 tests cover RSS/Atom parsing, title decoding, canonicalization, close-headline clustering, model version separation, new-evidence gating, source failures, retries, replay safety, immutable provenance, API access control, draft/coverage separation, follow-up timing, one-time follow-up completion, expiry, DST, publication freshness, diversity and runtime bounds.
+- 29 tests cover RSS/Atom parsing, title decoding, canonicalization, close-headline clustering, model version separation, new-evidence gating, source failures, retries, replay safety, immutable provenance, persistence across a full runtime restart, API access control, draft/coverage separation, follow-up timing, one-time follow-up completion, expiry, DST, publication freshness, diversity and runtime bounds.
 - Live public-feed run: **11 feeds, 215 articles, 215 stories, 215 evidence records, nine selected items / 45 estimated minutes**. Zero stories marked covered. These local smoke counts are a single run, not a production reliability claim.
 - The proposed OECD URL returned 404 and was removed before the catalog was finalized. All 11 retained feed endpoints returned parseable feeds in the check; NIST had no recent AI items passing the seven-day window.
 - Dependency audit: zero known advisories at the time of validation.
+- GitHub Actions did not execute any steps: GitHub reports an account billing/spending-limit block. The green verification above is local; hosted CI remains blocked until that account issue is resolved.
 
 ## Next milestone
 

@@ -4,7 +4,7 @@ import { seedSources,SOURCES } from '../src/sources';
 import { ingestSource } from '../src/ingest';
 import { lineup } from '../src/editorial';
 import type { Env } from '../src/types';
-const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:'export default {fetch(){return new Response("Local smoke ledger")}}',compatibilityDate:'2026-10-29',d1Databases:{DB:'smoke-ledger'},r2Buckets:{EVIDENCE:'smoke-evidence'},d1Persist:'.wrangler/smoke/d1',r2Persist:'.wrangler/smoke/r2'}));
+const mf=new Miniflare({...convertV4MiniflareOptions({modules:true,script:'export default {fetch(){return new Response("Local smoke ledger")}}',compatibilityDate:'2026-10-29',d1Databases:{DB:'smoke-ledger'},r2Buckets:{EVIDENCE:'smoke-evidence'},}),resourcePersistencePath:'.wrangler/smoke'});
 try {
   await mf.ready;
   const db=await mf.getD1Database('DB');
