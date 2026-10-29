@@ -1,0 +1,45 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "esemplastify",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-29",
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "esemplastify-ledger",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "EVIDENCE",
+      "bucket_name": "esemplastify-evidence"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "INGEST",
+        "queue": "esemplastify-ingestion"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "esemplastify-ingestion",
+        "max_batch_size": 1,
+        "max_retries": 4,
+        "dead_letter_queue": "esemplastify-ingestion-dlq",
+        "max_concurrency": 1
+      }
+    ]
+  },
+  "triggers": {
+    "crons": [
+      "*/30 * * * *"
+    ]
+  },
+  "observability": {
+    "enabled": true
+  }
+}
