@@ -17,7 +17,7 @@ export function domainFor(title:string,fallback:string):Domain {
     ['science',/\b(physics|quantum|mathematic\w*|black holes?|telescope\w*|astronom\w*|galax\w*|spacecraft|jupiter|chemistry|embryonic|magnetic|klein bottle)\b/i],
     ['ideas',/\b(philosoph\w*|ethics|consciousness|free will|freedom|education|learning)\b/i],
     ['life',/\b(cooking|recipes?|gardening|repairing|habits?|friendship|sleep|paperwork|organizing|parenting)\b/i],
-    ['world',/\b(elections?|parliament|ceasefire|refugees?|diplomacy|geopolitic\w*|sanctions?)\b/i],
+    ['world',/\b(elections?|vot(?:e|ed|es|ing)|ballots?|coalition|parliament|ceasefire|refugees?|diplomacy|geopolitic\w*|sanctions?)\b/i],
   ];
   for(const [domain,pattern] of rules)if(pattern.test(title))return domain;
   if(isAIStory(title))return 'technology';

@@ -74,6 +74,7 @@ describe('broad editorial scope',()=>{
     expect(isAIStory('Ai Weiwei unveils a new exhibition')).toBe(false);
     expect(isAIStory('AI changes furniture design')).toBe(true);
     expect(domainFor('Ai Weiwei unveils a new exhibition','culture')).toBe('culture');
+    expect(domainFor('Dissecting a messy ballot and coalition-building process','ideas')).toBe('world');
   });
   it('limits AI across source categories and favors at least five available domains',()=>{
     const pool=DOMAINS.flatMap((domain,i)=>Array.from({length:3},(_,j)=>candidate(`${i}-${j}`,domain,`p${i}-${j}`)));
