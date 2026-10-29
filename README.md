@@ -4,7 +4,7 @@
 
 An independent daily AI news podcast project. This milestone implements **discovery and editorial preparation**: live RSS/Atom ingestion, provenance, a persistent story ledger, conservative clustering, explainable novelty/diversity ranking, and one substantive verification follow-up. It has no dependency on FTOPS, Cabinitron, their databases, or their credentials.
 
-**Status:** discovery is deployed at [esemplastify.gr4gwzrfq2.workers.dev](https://esemplastify.gr4gwzrfq2.workers.dev/health) and verified against live feeds. Dedicated D1, private R2, ingestion/dead-letter queues, and the half-hourly Cron trigger are provisioned. There is no generated audio, published podcast feed, or automatic claim verification yet. See [deployment evidence and operations](docs/deployment.md).
+**Status:** discovery is deployed at [esemplastify.gr4gwzrfq2.workers.dev](https://esemplastify.gr4gwzrfq2.workers.dev/health) and verified against live feeds. Dedicated D1, private R2, ingestion/dead-letter queues, and the half-hourly Cron trigger are provisioned. Private, editor-reviewed pilot narration is implemented through Workers AI; a published podcast feed and automatic claim verification are not implemented. See [private pilot production](docs/private-pilots.md). See [deployment evidence and operations](docs/deployment.md).
 
 ## Run locally
 
@@ -124,4 +124,4 @@ No unattended operating history, real 06:00 run, or real elapsed 24–48-hour ve
 
 ## Next milestone
 
-Add editorial merge/split and candidate review controls, evidence-based synthesis with claim citations, script length estimation, voice generation, audio assembly, R2 episode objects, a private podcast RSS feed, production observability and an earlier audio build schedule for actual 06:00 delivery. Model/provider and voice choices remain open. No paid model or speech API credential is assumed.
+Review the private pilot for editorial quality, pacing, voice, and fact sourcing. Add editorial merge/split controls, grounded automated script drafting, a private podcast RSS feed, production observability, and an earlier audio build schedule for actual 06:00 delivery. The first narration provider is Cloudflare Workers AI / Deepgram Aura-2; no separate speech-provider credential is required. Pilot creation and rendering do not imply publication or actual coverage.
