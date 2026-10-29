@@ -2,7 +2,7 @@
 
 “To shape diversified elements into a unified whole.”
 
-An independent daily AI news podcast project. This milestone implements **discovery and editorial preparation**: live RSS/Atom ingestion, provenance, a persistent story ledger, conservative clustering, explainable novelty/diversity ranking, and one substantive verification follow-up. It has no dependency on FTOPS, Cabinitron, their databases, or their credentials.
+An independent daily, AI-produced podcast about diverse information: creation, living, learning, and world context. This milestone implements **discovery and editorial preparation**: live RSS/Atom ingestion, provenance, a persistent story ledger, conservative clustering, explainable novelty/diversity ranking, and one substantive verification follow-up. It has no dependency on FTOPS, Cabinitron, their databases, or their credentials.
 
 **Status:** discovery is deployed at [esemplastify.gr4gwzrfq2.workers.dev](https://esemplastify.gr4gwzrfq2.workers.dev/health) and verified against live feeds. Dedicated D1, private R2, ingestion/dead-letter queues, and the half-hourly Cron trigger are provisioned. Private, editor-reviewed pilot narration is implemented through Workers AI; a published podcast feed and automatic claim verification are not implemented. See [private pilot production](docs/private-pilots.md). See [deployment evidence and operations](docs/deployment.md).
 
@@ -47,7 +47,7 @@ flowchart LR
   Review --> D1
 ```
 
-- **Worker:** API, queue consumer, and scheduler. Feed retrieval has a 20-second timeout, a 2 MB body limit, and a maximum of 150 items per feed. Broad feeds are filtered for AI relevance. Items more than seven days old or more than one hour in the future are excluded. Missing publication dates are retained explicitly as unknown.
+- **Worker:** API, queue consumer, and scheduler. Feed retrieval has a 20-second timeout, a 2 MB body limit, and a maximum of 150 items per feed. Feeds admit broad subject matter without requiring AI keywords; obvious promotional headlines are excluded. Items more than seven days old or more than one hour in the future are excluded. Missing publication dates are retained explicitly as unknown.
 - **Queues:** one source per message, serial consumer (`max_concurrency: 1`), per-message acknowledgement, exponential retry, four retries, and a separate dead-letter queue. Serial consumption avoids concurrent cluster creation races. A failed feed does not block the other sources. Failed messages need operator inspection in the dead-letter queue.
 - **D1:** sources and health, fetch attempts, canonical articles, immutable evidence versions, story clusters, episode snapshots, confirmed coverage, verification notes, and follow-up windows. Prepared SQL and atomic item/coverage batches; unique constraints make replays safe. Feed validators advance only after a successful ingestion.
 - **R2:** private, content-addressed raw RSS/Atom snapshots. Every evidence version links to its source, article URL, reported publication time, observation time, content hash, and snapshot key. A snapshot is source evidence, not a verified fact. No article-page scraping or paywall bypass.
@@ -57,7 +57,7 @@ Cloudflare documents that [Cron triggers execute in UTC](https://developers.clou
 
 ## Editorial behavior
 
-Initial candidates must have recent evidence (within 72 hours). Scores expose publication freshness, explicit AI relevance in the headline, distinct publishers, primary-source availability, topic mix, regional mix, and source concentration. Google Research and DeepMind share one publisher identity. Primary sources can have commercial interests; source type is not a truth rating. A fixed source catalog is an initial English-language mix, not exhaustive world coverage.
+Initial candidates must have recent evidence (within 72 hours). Scores expose publication freshness, distinct publishers, primary-source availability, topic mix, regional mix, and source concentration. AI has no ranking bonus and is limited to at most one story per lineup. Each subject and publisher can contribute at most two selected stories; unseen subjects receive a stronger diversity preference until five are represented when material permits. Topic labels are transparent heuristics, so an editor still reviews them. Primary sources can have commercial interests; source type is not a truth rating. A fixed source catalog is an initial English-language mix, not exhaustive world coverage.
 
 A greedy selector recomputes diversity after every selection and limits repeated publisher concentration. Default runtime is **45 minutes**; callers may request **30–60 minutes**. Each selected story reserves an estimated five-minute discussion slot. Sparse days report `insufficient_material` and `shortfallMinutes`; the system never fills runtime with already-covered stories. These are estimated slots, not scripts or measured audio.
 
@@ -113,7 +113,7 @@ The service fails closed until its editorial secret is configured. Generate a ne
 
 No unattended operating history, real 06:00 run, or real elapsed 24–48-hour verification cycle has been observed yet. Tests exercise those clocks deterministically. Cloud storage costs, operational alerting, evidence retention/cleanup and more complete authentication should be addressed before sustained operation.
 
-## Validation recorded for this milestone
+## Historical validation of the initial discovery milestone
 
 - TypeScript checking and Worker dry-run bundling pass.
 - 29 tests cover RSS/Atom parsing, title decoding, canonicalization, close-headline clustering, model version separation, new-evidence gating, source failures, retries, replay safety, immutable provenance, persistence across a full runtime restart, API access control, draft/coverage separation, follow-up timing, one-time follow-up completion, expiry, DST, publication freshness, diversity and runtime bounds.
@@ -121,6 +121,12 @@ No unattended operating history, real 06:00 run, or real elapsed 24–48-hour ve
 - The proposed OECD URL returned 404 and was removed before the catalog was finalized. All 11 retained feed endpoints returned parseable feeds in the check; NIST had no recent AI items passing the seven-day window.
 - Dependency audit: zero known advisories at the time of validation.
 - The repository is public. The previously billing-blocked GitHub checks were rerun and passed before the first milestone was merged. Current rollout-PR checks are tracked separately.
+
+## Broad editorial scope correction
+
+The first catalog and private pilot mistakenly treated “AI news podcast” as news about AI. The intended show uses AI in production and covers diverse information. The current catalog contains 22 feeds across science, nature, world affairs, design, culture, history, ideas, economics, and technology. See [editorial policy](docs/editorial-policy.md). Validation of this correction: 49 tests pass; all 22 public feeds returned parseable inputs; a live-feed local D1/R2 run produced 349 articles, 346 clusters, and a 45-minute draft across nine subjects with zero confirmed coverage. These counts describe a single local run.
+
+Historical snapshots, scripts, and provenance remain intact; they are not evidence of an approved editorial direction or confirmed coverage.
 
 ## Next milestone
 

@@ -17,7 +17,7 @@ export async function hash(value: string) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 export function parseFeed(xml: string, base: string): FeedItem[] {
-  if (/<!DOCTYPE|<!ENTITY/i.test(xml)) throw new Error('Feed entities prohibited');
+  if (/<!DOCTYPE|<!ENTITY/i.test(xml.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g,''))) throw new Error('Feed entities prohibited');
   if(XMLValidator.validate(xml)!==true) throw new Error('Invalid XML');
   const parsed=new XMLParser({ignoreAttributes:false,attributeNamePrefix:'@_',processEntities:true}).parse(xml);
   const entries=parsed.rss?.channel?.item ?? parsed.feed?.entry ?? parsed['rdf:RDF']?.item;

@@ -19,14 +19,14 @@ const request=(path:string,method='GET',data?:unknown)=>new Request(`http://loca
 const call=(path:string,method='GET',data?:unknown,at=t0)=>handle(request(path,method,data),env,at);
 async function count(table:string){return Number((await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${table}`).first<any>())!.n);}
 async function coverInitial(){
-  const id=await storeItem(env,source('guardian'),original,'fixtures/initial.xml',t0);
+  const id=await storeItem(env,source('guardian-culture'),original,'fixtures/initial.xml',t0);
   await call('/api/episodes/today','POST');
   const response=await call('/api/episodes/2026-10-28/coverage','POST',{confirmCovered:true,items:[{storyId:id,kind:'initial'}]});
   expect(response.status).toBe(200);return id;
 }
 beforeAll(async()=>{
   const bundled=await build({entryPoints:['src/index.ts'],bundle:true,write:false,format:'esm',platform:'browser',target:'es2022'});
-  mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:bundled.outputFiles[0].text,compatibilityDate:'2026-10-29',d1Databases:{DB:'test-ledger'},r2Buckets:{EVIDENCE:'test-evidence'},queueProducers:{INGEST:'ingestion'},queueConsumers:{ingestion:{maxBatchSize:1,maxBatchTimeout:0,maxRetries:0,deadLetterQueue:'dlq'}},bindings:{ADMIN_TOKEN:'test-secret'},outboundService:async(request:Request)=>{if(request.url==='https://rss.arxiv.org/rss/cs.AI'&&outboundXml)return new Response(outboundXml);throw new Error('Unexpected outbound request');}}));
+  mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:bundled.outputFiles[0].text,compatibilityDate:'2026-10-29',d1Databases:{DB:'test-ledger'},r2Buckets:{EVIDENCE:'test-evidence'},queueProducers:{INGEST:'ingestion'},queueConsumers:{ingestion:{maxBatchSize:1,maxBatchTimeout:0,maxRetries:0,deadLetterQueue:'dlq'}},bindings:{ADMIN_TOKEN:'test-secret'},outboundService:async(request:Request)=>{if(request.url==='https://www.quantamagazine.org/feed/'&&outboundXml)return new Response(outboundXml);throw new Error('Unexpected outbound request');}}));
   await mf.ready;
   const db=await mf.getD1Database('DB');
   const sql=await readFile('migrations/0001_ledger.sql','utf8');
@@ -55,7 +55,7 @@ describe('actual D1/R2 ledger and editorial API',()=>{
   });
   it('clusters equivalent headlines from distinct publishers and retains both provenance records',async()=>{
     const a=await storeItem(env,source('nist'),original,'a.xml',t0);
-    const b=await storeItem(env,source('guardian'),{...original,title:'NIST releases new artificial intelligence safety framework',url:'https://news.test/report'},'b.xml',t0);
+    const b=await storeItem(env,source('guardian-culture'),{...original,title:'NIST releases new artificial intelligence safety framework',url:'https://news.test/report'},'b.xml',t0);
     expect(a).toBe(b);expect(await count('stories')).toBe(1);expect(await count('articles')).toBe(2);
     const story=await (await call(`/api/stories/${a}`)).json() as any;expect(story.evidence).toHaveLength(2);
   });
@@ -74,10 +74,34 @@ describe('actual D1/R2 ledger and editorial API',()=>{
     await expect(ingestSource(env,'nist',t0,async()=>new Response('<html>oops</html>',{headers:{etag:'bad'}}))).rejects.toThrow();
     expect((await env.DB.prepare("SELECT etag FROM sources WHERE id='nist'").first<any>()).etag).toBeNull();expect(await count('stories')).toBe(0);
   });
-  it('filters irrelevant broad-feed stories, future dates and stale publications',async()=>{
+  it('admits non-AI stories while filtering future dates and stale publications',async()=>{
     const item=(title:string,date:string,slug:string)=>`<item><title>${title}</title><link>https://example.org/${slug}</link><pubDate>${date}</pubDate></item>`;
-    const rss=`<rss><channel>${item('An unrelated space mission',t0,'a')}${item('AI from the future','2028-01-01','b')}${item('AI old news','2020-01-01','c')}${item('AI new research',t0,'d')}</channel></rss>`;
-    await ingestSource(env,'nist',t0,async()=>new Response(rss));expect(await count('articles')).toBe(1);
+    const rss=`<rss><channel>${item('A new space mission',t0,'a')}${item('AI from the future','2028-01-01','b')}${item('AI old news','2020-01-01','c')}${item('AI new research',t0,'d')}</channel></rss>`;
+    await ingestSource(env,'nist',t0,async()=>new Response(rss));expect(await count('articles')).toBe(2);
+  });
+  it('acknowledges queued disabled sources without fetching or deleting provenance',async()=>{
+    await storeItem(env,source('nist'),original,'original.xml',t0);
+    await env.DB.prepare("UPDATE sources SET enabled=0 WHERE id='nist'").run();
+    const fetcher=vi.fn();
+    expect(await ingestSource(env,'nist',t1,fetcher)).toMatchObject({skipped:true});
+    expect(fetcher).not.toHaveBeenCalled();expect(await count('evidence')).toBe(1);
+    await seedSources(env);
+    expect((await env.DB.prepare("SELECT enabled FROM sources WHERE id='nist'").first<any>()).enabled).toBe(0);
+  });
+  it('retires narrow AI feeds without deleting their ledger or blocking reviewed follow-ups',async()=>{
+    await env.DB.prepare("INSERT INTO sources(id,name,url,publisher,category,region,primary_source) VALUES('arxiv-ai','Old AI feed','https://example.org/old','arxiv','science','global',1)").run();
+    const oldSource={...source('quanta'),id:'arxiv-ai'};
+    const id=await storeItem(env,oldSource,original,'old.xml',t0);
+    await call('/api/episodes/today','POST');
+    expect((await call('/api/episodes/2026-10-28/coverage','POST',{confirmCovered:true,items:[{storyId:id,kind:'initial'}]})).status).toBe(200);
+    await storeItem(env,oldSource,updated,'update.xml',t1);
+    await seedSources(env);
+    expect((await env.DB.prepare("SELECT enabled FROM sources WHERE id='arxiv-ai'").first<any>()).enabled).toBe(0);
+    const c=(await candidates(env,t1))[0];expect(c.activeSources).toBe(false);
+    const e=c.evidence.find(e=>e.raw_key==='update.xml')!;
+    expect((await call(`/api/stories/${id}/verification`,'POST',{evidenceIds:[e.id],note,reviewed:true},t1)).status).toBe(200);
+    expect((await lineup(env,t1)).items[0].kind).toBe('followup');
+    expect(await count('evidence')).toBe(2);
   });
   it('limits downloaded feeds',async()=>{
     await expect(boundedText(new Response('123456'),5)).rejects.toThrow('size limit');
@@ -91,7 +115,7 @@ describe('actual D1/R2 ledger and editorial API',()=>{
     expect((await call('/api/lineup?minutes=NaN')).status).toBe(400);
   });
   it('keeps proposal creation separate from coverage and records initial coverage idempotently',async()=>{
-    const id=await storeItem(env,source('guardian'),original,'a',t0);
+    const id=await storeItem(env,source('guardian-culture'),original,'a',t0);
     await call('/api/episodes/today','POST');await call('/api/episodes/today','POST');
     expect(await count('coverage')).toBe(0);expect(await count('episodes')).toBe(1);
     const data={confirmCovered:true,items:[{storyId:id,kind:'initial'}]};
@@ -130,7 +154,7 @@ describe('actual D1/R2 ledger and editorial API',()=>{
     expect((await env.DB.prepare('SELECT state FROM followups').first<any>()).state).toBe('expired');
   });
   it('processes a real producer→queue→consumer→D1/R2 round trip',async()=>{
-    await env.DB.prepare("UPDATE sources SET enabled=0 WHERE id!='arxiv-ai'").run();
+    await env.DB.prepare("UPDATE sources SET enabled=0 WHERE id!='quanta'").run();
     const now=new Date().toISOString();
     const xml=`<rss><channel><item><title>New artificial intelligence evaluation benchmarks</title><link>https://arxiv.org/abs/test</link><description>Evaluation findings</description><pubDate>${now}</pubDate></item></channel></rss>`;
     outboundXml=xml;
