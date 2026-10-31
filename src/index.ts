@@ -1,4 +1,5 @@
-import type { Env, IngestJob, Candidate } from './types';
+import { pilotRoute, PilotError, produceChunk } from './production';
+import type { Env, IngestJob, Candidate, ProductionJob } from './types';
 import { enqueueSources, ingestSource } from './ingest';
 import { candidates, eligibility, freshEvidence, HOUR, lineup, pacificClock, snapshot } from './editorial';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -53,8 +54,9 @@ async function verifyStory(env:Env,storyId:string,data:any,now:string) {
 export async function handle(request:Request,env:Env,now=new Date().toISOString()):Promise<Response> {
   try{
     const url=new URL(request.url),path=url.pathname;
-    if(request.method==='GET'&&(path==='/health'||path==='/'))return json({service:'Esemplastify',milestone:'discovery-ledger',audioGeneration:false,editorialApi:'/api/lineup',requires:'Authorization: Bearer <editorial token>'});
+    if(request.method==='GET'&&(path==='/health'||path==='/'))return json({service:'Esemplastify',milestone:'discovery-ledger',audioGeneration:!!env.AI,automaticScriptWriting:false,editorialApi:'/api/lineup',requires:'Authorization: Bearer <editorial token>'});
     await authorized(request,env);
+    if(path.startsWith('/api/pilots')){const response=await pilotRoute(request,env,path,now);if(response)return response;}
     if(request.method==='GET'&&path==='/api/lineup'){
       const target=Number(url.searchParams.get('minutes')??45);if(!Number.isInteger(target)||target<30||target>60)fail(400,'minutes must be an integer from 30 to 60');
       return json(await lineup(env,now,target));
@@ -76,7 +78,7 @@ export async function handle(request:Request,env:Env,now=new Date().toISOString(
       return json({story,evidence:evidence.results,coverage:(await env.DB.prepare('SELECT * FROM coverage WHERE story_id=?').bind(match[1]).all()).results});
     }
     return json({error:'Route not found'},404);
-  }catch(error){if(error instanceof HttpError)return json({error:error.message},error.status);console.error('Editorial request failed',error instanceof Error?error.name:'UnknownError');return json({error:'Internal service error'},500);}
+  }catch(error){if(error instanceof HttpError||error instanceof PilotError)return json({error:error.message},error.status);console.error('Editorial request failed',error instanceof Error?error.name:'UnknownError');return json({error:'Internal service error'},500);}
 }
 export async function runScheduled(env:Env,date:Date) {
   const now=date.toISOString();
@@ -90,10 +92,10 @@ export async function runScheduled(env:Env,date:Date) {
 export default {
   fetch(request:Request,env:Env){return handle(request,env);},
   async scheduled(controller:ScheduledController,env:Env){await runScheduled(env,new Date(controller.scheduledTime));},
-  async queue(batch:MessageBatch<IngestJob>,env:Env){
+  async queue(batch:MessageBatch<IngestJob|ProductionJob>,env:Env){
     for(const message of batch.messages){
-      try{await ingestSource(env,message.body.sourceId);message.ack();}
-      catch{console.error('Source ingestion failed',{sourceId:message.body.sourceId,attempts:message.attempts});message.retry({delaySeconds:Math.min(60*2**message.attempts,3600)});}
+      try{if('pilotId' in message.body)await produceChunk(env,message.body);else await ingestSource(env,message.body.sourceId);message.ack();}
+      catch{console.error('Queue job failed',{kind:'pilotId' in message.body?'production':'ingestion',attempts:message.attempts});message.retry({delaySeconds:Math.min(60*2**message.attempts,3600)});}
     }
   },
-} satisfies ExportedHandler<Env,IngestJob>;
+} satisfies ExportedHandler<Env,IngestJob|ProductionJob>;

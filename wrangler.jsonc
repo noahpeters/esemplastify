@@ -23,6 +23,10 @@
       {
         "binding": "INGEST",
         "queue": "esemplastify-ingestion"
+      },
+      {
+        "binding": "PRODUCE",
+        "queue": "esemplastify-production"
       }
     ],
     "consumers": [
@@ -32,6 +36,13 @@
         "max_retries": 4,
         "dead_letter_queue": "esemplastify-ingestion-dlq",
         "max_concurrency": 1
+      },
+      {
+        "queue": "esemplastify-production",
+        "max_batch_size": 1,
+        "max_concurrency": 1,
+        "max_retries": 3,
+        "dead_letter_queue": "esemplastify-production-dlq"
       }
     ]
   },
@@ -42,5 +53,8 @@
   },
   "observability": {
     "enabled": true
+  },
+  "ai": {
+    "binding": "AI"
   }
 }
