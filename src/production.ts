@@ -1,3 +1,4 @@
+import { EDITORIAL_POLICY,MAX_LINEUP_ITEMS } from './editorial-policy';
 import type { Env, ProductionJob } from './types';
 import { hash } from './feed';
 const MODEL='@cf/deepgram/aura-2-en';
@@ -34,7 +35,7 @@ export function mp3Duration(bytes:Uint8Array):number {
 }
 async function getPilot(env:Env,id:string){const p=await env.DB.prepare('SELECT * FROM pilots WHERE id=?').bind(id).first<Pilot>();if(!p)throw new PilotError(404,'Pilot not found');return p;}
 export async function createPilot(env:Env,input:PilotInput,now:string){
-  if(!input||input.reviewed!==true||typeof input.title!=='string'||!input.title.trim()||input.title.length>200||typeof input.reviewNotes!=='string'||input.reviewNotes.trim().length<40||!Array.isArray(input.sourceChecks)||input.sourceChecks.length>30||!Array.isArray(input.segments)||input.segments.length<1||input.segments.length>20)invalid('Reviewed script, review notes, source checks, and 1–20 segments required');
+  if(!input||input.reviewed!==true||typeof input.title!=='string'||!input.title.trim()||input.title.length>200||typeof input.reviewNotes!=='string'||input.reviewNotes.trim().length<40||!Array.isArray(input.sourceChecks)||input.sourceChecks.length>MAX_LINEUP_ITEMS*2||!Array.isArray(input.segments)||input.segments.length<1||input.segments.length>MAX_LINEUP_ITEMS)invalid(`Reviewed script, review notes, source checks, and 1–${MAX_LINEUP_ITEMS} segments required`);
   const speaker=input.speaker??'athena';if(!SPEAKERS.has(speaker))invalid('Unsupported pilot voice');
   let characters=0;const evidenceIds=new Set<string>();const chunks:{text:string;segment:number}[]=[];
   input.segments.forEach((s,index)=>{
@@ -47,7 +48,7 @@ export async function createPilot(env:Env,input:PilotInput,now:string){
   for(const id of evidenceIds){const row=await env.DB.prepare('SELECT e.id,a.story_id,a.canonical_url,e.title,e.raw_key FROM evidence e JOIN articles a ON a.id=e.article_id WHERE e.id=?').bind(id).first<typeof links[number]>();if(!row)invalid('Unknown ledger evidence');links.push(row!);}
   const id=crypto.randomUUID(),key=`pilots/${id}/script.json`;
   const words=input.segments.map(s=>s.text).join(' ').trim().split(/\s+/).length;
-  const script={id,title:input.title.trim(),createdAt:now,writer:'editor-written with Codex assistance',reviewed:true,reviewNotes:input.reviewNotes,sourceChecks:input.sourceChecks,segments:input.segments,provenance:links,model:MODEL,speaker,words,characters,chunks:chunks.map((c,ordinal)=>({ordinal,segment:c.segment,text:c.text})),disclosure:'AI-generated narration. Private editorial pilot; no publication or coverage confirmation.'};
+  const script={editorialPolicyVersion:EDITORIAL_POLICY.version,scriptGuidance:EDITORIAL_POLICY.scriptGuidance,id,title:input.title.trim(),createdAt:now,writer:'editor-written with Codex assistance',reviewed:true,reviewNotes:input.reviewNotes,sourceChecks:input.sourceChecks,segments:input.segments,provenance:links,model:MODEL,speaker,words,characters,chunks:chunks.map((c,ordinal)=>({ordinal,segment:c.segment,text:c.text})),disclosure:'AI-generated narration. Private editorial pilot; no publication or coverage confirmation.'};
   await env.EVIDENCE.put(key,JSON.stringify(script),{httpMetadata:{contentType:'application/json'}});
   await env.DB.batch([
     env.DB.prepare("INSERT INTO pilots(id,title,created_at,status,script_key,model,speaker,word_count,character_count,chunk_count) VALUES(?,?,?,'draft',?,?,?,?,?,?)").bind(id,input.title.trim(),now,key,MODEL,speaker,words,characters,chunks.length),

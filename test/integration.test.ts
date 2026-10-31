@@ -125,6 +125,22 @@ describe('actual D1/R2 ledger and editorial API',()=>{
     expect(await count('coverage')).toBe(1);expect(await count('followups')).toBe(1);
     expect((await lineup(env,t0)).items).toHaveLength(0);
   });
+  it('exposes shared script guidance and confirms coverage for a briefing with more than twelve items',async()=>{
+    const policy=await (await call('/api/editorial-policy')).json() as any;
+    expect(policy.overarchingThemeRequired).toBe(false);expect(policy.topicQuotas).toBe(false);
+    for(let i=0;i<13;i++)await storeItem(env,SOURCES[i],{...original,title:`Regional report ${i}`,summary:"A short regional news report.",url:`https://example.org/brief/${i}`},'brief.xml',t0);
+    await call('/api/episodes/today','POST');
+    const saved=await (await call('/api/episodes/2026-10-28')).json() as any;
+    expect(saved.lineup.items).toHaveLength(13);
+    expect(saved.lineup.editorialPolicyVersion).toBe(policy.version);
+    expect(saved.lineup.items.every((i:any)=>i.minutes===1)).toBe(true);
+    expect((await call('/api/episodes/2026-10-28/coverage','POST',{confirmCovered:true,items:saved.lineup.items.map((i:any)=>({storyId:i.storyId,kind:i.kind}))})).status).toBe(200);
+    expect(await count('coverage')).toBe(13);expect(await count('followups')).toBe(13);
+    await storeItem(env,SOURCES[0],{...original,title:'Another regional report 99',url:'https://example.org/later'},'later.xml',t0);
+    await call('/api/episodes/today','POST');
+    const again=await (await call('/api/episodes/2026-10-28')).json() as any;
+    expect(again.lineup).toEqual(saved.lineup);
+  });
   it('requires substantive new reviewed evidence, enforces 24–48h and permits only one follow-up',async()=>{
     const id=await coverInitial();
     await storeItem(env,source('nist'),updated,'b',t1);

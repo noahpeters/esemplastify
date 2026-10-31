@@ -2,7 +2,7 @@
 
 “To shape diversified elements into a unified whole.”
 
-An independent daily, AI-produced podcast about diverse information: creation, living, learning, and world context. This milestone implements **discovery and editorial preparation**: live RSS/Atom ingestion, provenance, a persistent story ledger, conservative clustering, explainable novelty/diversity ranking, and one substantive verification follow-up. It has no dependency on FTOPS, Cabinitron, their databases, or their credentials.
+An independent daily, AI-produced briefing about timely, diverse information, including consequential smaller developments. Stories can stand independently; the goal is to keep the listener informed. This milestone implements **discovery and editorial preparation**: live RSS/Atom ingestion, provenance, a persistent story ledger, conservative clustering, explainable timeliness/public-interest ranking, and one substantive verification follow-up. It has no dependency on FTOPS, Cabinitron, their databases, or their credentials.
 
 **Status:** discovery is deployed at [esemplastify.gr4gwzrfq2.workers.dev](https://esemplastify.gr4gwzrfq2.workers.dev/health) and verified against live feeds. Dedicated D1, private R2, ingestion/dead-letter queues, and the half-hourly Cron trigger are provisioned. Private, editor-reviewed pilot narration is implemented through Workers AI; a published podcast feed and automatic claim verification are not implemented. See [private pilot production](docs/private-pilots.md). See [deployment evidence and operations](docs/deployment.md).
 
@@ -57,11 +57,13 @@ Cloudflare documents that [Cron triggers execute in UTC](https://developers.clou
 
 ## Editorial behavior
 
-Initial candidates must have recent evidence (within 72 hours). Scores expose publication freshness, distinct publishers, primary-source availability, topic mix, regional mix, and source concentration. AI has no ranking bonus and is limited to at most one story per lineup. Each subject and publisher can contribute at most two selected stories; unseen subjects receive a stronger diversity preference until five are represented when material permits. Topic labels are transparent heuristics, so an editor still reviews them. Primary sources can have commercial interests; source type is not a truth rating. A fixed source catalog is an initial English-language mix, not exhaustive world coverage.
+Initial candidates need evidence within 72 hours, using the earliest retained publication time to avoid refreshing a story with a reprint. A transparent rule-based ranker emphasizes publication freshness, provisional public-interest cues, publisher support, and modest source concentration controls. Recurring features receive less priority than concrete developments. Unknown publication dates are explicitly flagged and receive less freshness credit. Source claims remain unverified until editorial review.
 
-A greedy selector recomputes diversity after every selection and limits repeated publisher concentration. Default runtime is **45 minutes**; callers may request **30–60 minutes**. Each selected story reserves an estimated five-minute discussion slot. Sparse days report `insufficient_material` and `shortfallMinutes`; the system never fills runtime with already-covered stories. These are estimated slots, not scripts or measured audio.
+**There are no subject quotas, subject bonuses, regional bonuses, or required overarching theme.** Multiple important stories may cover the same subject. Broad discovery includes 27 feeds, with additional U.S., business, and local reporting. AI gets no bonus and remains limited to one story; each publisher may contribute at most 25% of requested runtime (at least four minutes), counting every contributing publisher for each story. See [editorial policy](docs/editorial-policy.md) for the scoring limits and review requirements.
 
-Deduplication normalizes tracking parameters and URL fragments, keeps meaningful URL parameters, and hashes canonical URLs. Headlines with substantial token overlap within a three-day publication window can cluster, with numeric differences preventing obvious model-version/event merges. A seven-day recent-ledger search bounds the work. This is a conservative lexical baseline: it can miss differently worded accounts of the same event and can occasionally merge similar headlines. Semantic clustering and editorial merge/split controls are future work. Categories and regions are currently source-level labels; research feeds can contain tangential items, and rankings need editorial review.
+Default runtime is **45 minutes**, with **30–60 minutes** accepted. Stories receive estimated **one-minute briefs, two-minute reports, or four-minute explainers**, with word ceilings and reasons. Longer slots require more substantive reporting; explainers also require multiple publishers. Up to 48 items fit the briefing workflow. Sparse days report `insufficient_material` and `shortfallMinutes`; the planner never stretches an item or repeats coverage to fill runtime. These are editorial budgets, not generated scripts or measured audio. Shared script guidance accompanies the lineup and new immutable pilot packets.
+
+Deduplication normalizes tracking parameters and URL fragments, keeps meaningful URL parameters, and hashes canonical URLs. Headlines with substantial token overlap within a three-day publication window can cluster, with numeric differences preventing obvious model-version/event merges. A seven-day recent-ledger search bounds the work. This is a conservative lexical baseline: it can miss differently worded accounts of the same event and can occasionally merge similar headlines. Semantic clustering and editorial merge/split controls are future work. Categories use title heuristics with source fallbacks; regions are source labels. Neither is a semantic assessment, and rankings need editorial review.
 
 **Creating a lineup does not mark a story covered.** Explicit coverage confirmation consumes the frozen episode's evidence IDs and opens one follow-up window from 24 to 48 hours after actual initial coverage. A follow-up is eligible only when:
 
@@ -81,6 +83,7 @@ All `/api/*` routes require the editorial bearer token. JSON responses disable c
 | GET | `/health` | Public service/milestone identity; not a readiness or freshness guarantee |
 | POST | `/api/ingest` | Seed the default catalog and enqueue enabled sources; returns 202 |
 | GET | `/api/sources` | Source URLs, ownership groups, last-success/error and feed validators |
+| GET | `/api/editorial-policy` | Versioned editorial purpose, segment budgets, and script guidance |
 | GET | `/api/lineup?minutes=45` | Current ranked preview; score components, sources, provenance IDs, estimated runtime; no coverage mutation |
 | GET | `/api/stories/:id` | All retained article evidence versions and coverage records for a story |
 | GET | `/api/followups` | Follow-up deadlines, state and verification notes |
@@ -124,9 +127,13 @@ No unattended operating history, real 06:00 run, or real elapsed 24–48-hour ve
 
 ## Broad editorial scope correction
 
-The first catalog and private pilot mistakenly treated “AI news podcast” as news about AI. The intended show uses AI in production and covers diverse information. The current catalog contains 22 feeds across science, nature, world affairs, design, culture, history, ideas, economics, and technology. See [editorial policy](docs/editorial-policy.md). Validation of this correction: 49 tests pass; all 22 public feeds returned parseable inputs; a live-feed local D1/R2 run produced 349 articles, 346 clusters, and a 45-minute draft across nine subjects with zero confirmed coverage. These counts describe a single local run.
+The first catalog and private pilot mistakenly treated “AI news podcast” as news about AI. The intended show uses AI in production and covers diverse information. The initial broad catalog contained 22 feeds across science, nature, world affairs, design, culture, history, ideas, economics, and technology. See [editorial policy](docs/editorial-policy.md). Validation of this correction: 49 tests pass; all 22 public feeds returned parseable inputs; a live-feed local D1/R2 run produced 349 articles, 346 clusters, and a 45-minute draft across nine subjects with zero confirmed coverage. These counts describe a single local run.
 
 Historical snapshots, scripts, and provenance remain intact; they are not evidence of an approved editorial direction or confirmed coverage.
+
+## Timely briefing refinement
+
+Selection now favors timeliness and public-interest cues, with independent stories and brief/report/explainer budgets. The earlier broad-scope validation above is historical; this refinement adds five reporting feeds and removes subject quotas. No replacement pilot or deployment is implied by the source change.
 
 ## Next milestone
 

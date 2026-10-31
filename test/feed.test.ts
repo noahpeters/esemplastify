@@ -50,10 +50,10 @@ describe('editorial rules',()=>{
     expect(eligibility(c,now)).toBeNull();
   });
   it('never pads a sparse day or exceeds requested runtime',()=>{
-    expect(rank([candidate('a')],now,45)).toMatchObject({estimatedMinutes:5,shortfallMinutes:25,status:'insufficient_material'});
-    expect(rank(Array.from({length:30},(_,i)=>candidate(`${i}`,DOMAINS[i%DOMAINS.length],`publisher${i}`)),now,60).estimatedMinutes).toBe(60);
+    expect(rank([candidate('a')],now,45)).toMatchObject({estimatedMinutes:1,shortfallMinutes:29,status:'insufficient_material'});
+    expect(rank(Array.from({length:80},(_,i)=>candidate(`${i}`,DOMAINS[i%DOMAINS.length],`publisher${i}`)),now,60).estimatedMinutes).toBeLessThanOrEqual(60);
   });
-  it('rewards topic and publisher diversity over equally fresh repetition',()=>{
+  it('reduces publisher concentration for otherwise equally fresh reporting',()=>{
     const ranked=rank([candidate('1'),candidate('2'),candidate('3','policy','b')],now);
     expect(ranked.items.slice(0,2).map(x=>x.category).sort()).toEqual(['science','world']);
   });
@@ -76,13 +76,13 @@ describe('broad editorial scope',()=>{
     expect(domainFor('Ai Weiwei unveils a new exhibition','culture')).toBe('culture');
     expect(domainFor('Dissecting a messy ballot and coalition-building process','ideas')).toBe('world');
   });
-  it('limits AI across source categories and favors at least five available domains',()=>{
+  it('limits AI across source categories without subject quotas',()=>{
     const pool=DOMAINS.flatMap((domain,i)=>Array.from({length:3},(_,j)=>candidate(`${i}-${j}`,domain,`p${i}-${j}`)));
     pool.push({...candidate('ai1','science','ai1'),title:'AI research advances'}, {...candidate('ai2','design','ai2'),title:'AI furniture design advances'});
     const result=rank(pool,now,60);
-    expect(result.diversity.domains.length).toBeGreaterThanOrEqual(5);
+    expect(result.diversity.topicQuotas).toBe(false);
     expect(result.items.filter(i=>i.aiTopic).length).toBeLessThanOrEqual(1);
-    for(const domain of DOMAINS)expect(result.items.filter(i=>i.category===domain).length).toBeLessThanOrEqual(2);
+    expect(result.items.filter(i=>i.category==='world').length).toBeGreaterThan(2);
   });
   it('gives AI no preference over equally fresh evidence',()=>{
     const ai={...candidate('z','technology','z'),title:'AI research advances'};
@@ -90,14 +90,17 @@ describe('broad editorial scope',()=>{
   });
   it('caps repeated publishers and excludes retired-only stories from initial coverage',()=>{
     const result=rank(DOMAINS.map((domain,i)=>candidate(String(i),domain,'same')),now);
-    expect(result.items).toHaveLength(2);
+    expect(result.estimatedMinutes).toBeLessThanOrEqual(result.diversity.maxPublisherMinutes);
     const retired={...candidate('retired'),activeSources:false};
     expect(eligibility(retired,now)).toBeNull();
   });
   it('counts every contributing publisher toward its cap',()=>{
     const a=candidate('a','world','same'),b=candidate('b','science','same'),c=candidate('c','culture','same');
     c.evidence.push({...c.evidence[0],id:'other',publisher:'other'});
-    expect(rank([a,b,c],now).items).toHaveLength(2);
+    const extra=Array.from({length:20},(_,i)=>candidate(`d${i}`,'world','same'));
+    const result=rank([a,b,c,...extra],now);
+    const sameMinutes=result.items.filter(i=>i.sources.some(s=>s.publisher==='same')).reduce((sum,i)=>sum+i.minutes,0);
+    expect(sameMinutes).toBeLessThanOrEqual(result.diversity.maxPublisherMinutes);
   });
   it('permits embedded HTML declarations inside CDATA but rejects XML declarations outside it',()=>{
     expect(parseFeed('<rss><channel><item><title>Space</title><link>https://example.org/a</link><description><![CDATA[<!DOCTYPE html><p>Mission</p>]]></description></item></channel></rss>','https://example.org')).toHaveLength(1);

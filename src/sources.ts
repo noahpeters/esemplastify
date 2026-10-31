@@ -1,7 +1,12 @@
 import type { Env, Source } from './types';
-// Curiosity-led coverage: creation, living, learning, and enough world context to connect them.
+// Timely reporting, including smaller developments with practical or public significance.
 export const RETIRED_AI_SOURCE_IDS=['arxiv-ai','huggingface','google-research','deepmind','mit','guardian','techcrunch'];
 export const SOURCES:Source[]=[
+ {id:'npr-national',name:'NPR National',url:'https://feeds.npr.org/1003/rss.xml',publisher:'npr',category:'world',region:'US',primary_source:0},
+ {id:'npr-business',name:'NPR Business',url:'https://feeds.npr.org/1006/rss.xml',publisher:'npr',category:'economy',region:'US',primary_source:0},
+ {id:'bbc-us',name:'BBC US and Canada',url:'https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml',publisher:'bbc',category:'world',region:'North America',primary_source:0},
+ {id:'seattle-times',name:'The Seattle Times Local News',url:'https://www.seattletimes.com/seattle-news/feed/',publisher:'seattle-times',category:'world',region:'US-Pacific Northwest',primary_source:0},
+ {id:'guardian-us',name:'The Guardian US News',url:'https://www.theguardian.com/us-news/rss',publisher:'guardian',category:'world',region:'US',primary_source:0},
  {id:'bbc-world',name:'BBC World',url:'https://feeds.bbci.co.uk/news/world/rss.xml',publisher:'bbc',category:'world',region:'global',primary_source:0},
  {id:'aljazeera',name:'Al Jazeera',url:'https://www.aljazeera.com/xml/rss/all.xml',publisher:'aljazeera',category:'world',region:'global-south',primary_source:0},
  {id:'quanta',name:'Quanta Magazine',url:'https://www.quantamagazine.org/feed/',publisher:'quanta',category:'science',region:'global',primary_source:0},
