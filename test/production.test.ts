@@ -31,3 +31,20 @@ it('reports dispatch failure and supports an explicit render retry',async()=>{co
 it('validates audio frames rather than requiring an audio MIME header from the AI binding',async()=>{const p=await createPilot(env,input(),new Date().toISOString());ai.mockResolvedValueOnce(new Response(audio(),{headers:{'content-type':'application/octet-stream'}}));await produceChunk(env,{pilotId:p.id,ordinal:0});expect((await env.DB.prepare('SELECT status FROM pilots WHERE id=?').bind(p.id).first<any>()).status).toBe('ready');});
 
 it('does not send a sample-rate option that Aura rejects for MP3',async()=>{const p=await createPilot(env,input(),new Date().toISOString());ai.mockImplementationOnce(async(_model,inputs)=>new Response('sample_rate' in inputs?JSON.stringify({errors:[{message:'sample_rate is not applicable to MP3'}]}):audio(),{status:'sample_rate' in inputs?400:200,headers:{'content-type':'sample_rate' in inputs?'application/json':'audio/mpeg'}}));await produceChunk(env,{pilotId:p.id,ordinal:0});expect((await env.DB.prepare('SELECT status FROM pilots WHERE id=?').bind(p.id).first<any>()).status).toBe('ready');});
+
+it('accepts a briefing with 21 independent short segments and records current script guidance',async()=>{
+ const packet=input();packet.segments=[];packet.sourceChecks=[];
+ for(let i=0;i<21;i++){
+  const url=`https://example.org/brief-${i}`;
+  await storeItem(env,SOURCES[0],{title:`Regional development ${i}`,summary:'A short factual update.',url,publishedAt:null,guid:null},'brief.xml',new Date().toISOString());
+  const e=await env.DB.prepare('SELECT e.id FROM evidence e JOIN articles a ON a.id=e.article_id WHERE a.canonical_url=?').bind(url).first<any>();
+  packet.segments.push({title:`Brief ${i}`,text:`This is short report ${i}. The source describes a recent development, and the narration identifies what is established and what remains uncertain.`,evidenceIds:[e.id]});
+  packet.sourceChecks.push({url,status:'verified'});
+ }
+ const p=await createPilot(env,packet,new Date().toISOString());
+ const saved=await (await handle(req(`/api/pilots/${p.id}/script`),env)).json() as any;
+ expect(saved.segments).toHaveLength(21);expect(saved.provenance).toHaveLength(21);
+ expect(saved.editorialPolicyVersion).toBe('2026-10-30-timely-briefing-v1');
+ expect(saved.scriptGuidance.join(' ')).toContain('do not invent a unifying theme');
+ expect(await env.DB.prepare('SELECT * FROM coverage').first()).toBeNull();
+});

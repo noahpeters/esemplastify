@@ -20,6 +20,7 @@ try {
   for(const s of SOURCES){try{results.push(await ingestSource(env,s.id,now));}catch(error){results.push({sourceId:s.id,error:error instanceof Error?error.message:'Unknown failure'});}}
   const counts:Record<string,number>={};
   for(const table of ['sources','stories','articles','evidence','fetches','coverage'])counts[table]=Number((await db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).first<any>())!.n);
+  counts.enabledSources=Number((await db.prepare('SELECT COUNT(*) AS n FROM sources WHERE enabled=1').first<any>())!.n);
   const draft=await lineup(env,now);
   const report={checkedAt:now,environment:'local Cloudflare runtime, live public RSS inputs',results,counts,lineup:{estimatedMinutes:draft.estimatedMinutes,shortfallMinutes:draft.shortfallMinutes,items:draft.items}};
   await mkdir('work',{recursive:true});await writeFile('work/live-smoke.json',JSON.stringify(report,null,2)+'\n');

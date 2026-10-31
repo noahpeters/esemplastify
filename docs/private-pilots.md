@@ -37,7 +37,7 @@ Example packet shape:
 }
 ```
 
-The example ID must be replaced with an actual 64-character ledger evidence ID. Scripts are limited to 65,000 characters and 64 speech chunks. Each chunk is at most 1,800 characters and keeps sentence boundaries where possible. The returned cost is an estimate at the model's documented $0.03 per thousand input characters; actual account charges and free allocations are separate. [Workers AI model documentation](https://developers.cloudflare.com/workers-ai/models/aura-2-en/).
+The example ID must be replaced with an actual 64-character ledger evidence ID. Scripts may contain up to 48 independent segments and 96 source-check entries, and remain limited to 65,000 characters and 64 speech chunks. New packets record the shared editorial policy version and script guidance. Briefs can stand alongside deeper stories; an overarching theme is not required. Each chunk is at most 1,800 characters and keeps sentence boundaries where possible. The returned cost is an estimate at the model's documented $0.03 per thousand input characters; actual account charges and free allocations are separate. [Workers AI model documentation](https://developers.cloudflare.com/workers-ai/models/aura-2-en/).
 
 ## Operator workflow
 

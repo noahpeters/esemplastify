@@ -1,5 +1,6 @@
+import { domainFor } from './topics';
 import { canonicalize, hash, parseFeed, similarity } from './feed';
-import { SOURCES, relevant, seedSources } from './sources';
+import { relevant, seedSources } from './sources';
 import type { Env, FeedItem, Source } from './types';
 
 export async function enqueueSources(env:Env) {
@@ -32,16 +33,16 @@ export async function storeItem(env:Env, source:Source, item:FeedItem, rawKey:st
   const evidenceId=await hash(`${articleId}:${source.id}:${contentHash}`);
   // One atomic D1 batch: a queue retry can never leave a half-written ledger item.
   await env.DB.batch([
-    env.DB.prepare('INSERT INTO stories(id,title,category,first_seen,last_seen) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET last_seen=excluded.last_seen').bind(storyId,item.title,source.category,now,now),
+    env.DB.prepare('INSERT INTO stories(id,title,category,first_seen,last_seen) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET last_seen=excluded.last_seen').bind(storyId,item.title,domainFor(item.title,source.category),now,now),
     env.DB.prepare('INSERT INTO articles(id,story_id,canonical_url,title,summary,published_at,first_seen,last_seen) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,summary=excluded.summary,last_seen=excluded.last_seen').bind(articleId,storyId,canonical,item.title,item.summary,item.publishedAt,now,now),
     env.DB.prepare('INSERT OR IGNORE INTO evidence(id,article_id,source_id,content_hash,title,summary,observed_at,published_at,raw_key,guid) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(evidenceId,articleId,source.id,contentHash,item.title,item.summary,now,item.publishedAt,rawKey,item.guid),
   ]);
   return storyId;
 }
 export async function ingestSource(env:Env,sourceId:string,now=new Date().toISOString(),fetcher:typeof fetch=fetch) {
-  const source=await env.DB.prepare('SELECT * FROM sources WHERE id=? AND enabled=1').bind(sourceId).first<Source>();
-  if(!source) throw new Error('Unknown or disabled source');
-  source.aiOnly=SOURCES.find(s=>s.id===sourceId)?.aiOnly;
+  const source=await env.DB.prepare('SELECT * FROM sources WHERE id=?').bind(sourceId).first<Source>();
+  if(!source)throw new Error('Unknown source');
+  if(source.enabled===0)return {sourceId,skipped:true,items:0};
   const fetchId=crypto.randomUUID(); let status=0;
   try {
     const headers:Record<string,string>={'User-Agent':'Esemplastify/0.1 (RSS discovery; source links retained)','Accept':'application/rss+xml, application/atom+xml, application/xml, text/xml'};

@@ -1,3 +1,4 @@
+import { EDITORIAL_POLICY,MAX_LINEUP_ITEMS } from './editorial-policy';
 import { pilotRoute, PilotError, produceChunk } from './production';
 import type { Env, IngestJob, Candidate, ProductionJob } from './types';
 import { enqueueSources, ingestSource } from './ingest';
@@ -18,7 +19,7 @@ async function authorized(request:Request,env:Env) {
   if(mismatch) fail(401,'Editorial bearer token required');
 }
 async function recordCoverage(env:Env,episodeId:string,data:any,now:string) {
-  if(data.confirmCovered!==true||!Array.isArray(data.items)||!data.items.length||data.items.length>12) fail(400,'confirmCovered and 1–12 lineup items required');
+  if(data.confirmCovered!==true||!Array.isArray(data.items)||!data.items.length||data.items.length>MAX_LINEUP_ITEMS) fail(400,`confirmCovered and 1–${MAX_LINEUP_ITEMS} lineup items required`);
   const episode=await env.DB.prepare('SELECT lineup_json FROM episodes WHERE id=?').bind(episodeId).first<{lineup_json:string}>();
   if(!episode) fail(404,'Episode draft not found');
   const draft=JSON.parse(episode!.lineup_json);
@@ -57,6 +58,7 @@ export async function handle(request:Request,env:Env,now=new Date().toISOString(
     if(request.method==='GET'&&(path==='/health'||path==='/'))return json({service:'Esemplastify',milestone:'discovery-ledger',audioGeneration:!!env.AI,automaticScriptWriting:false,editorialApi:'/api/lineup',requires:'Authorization: Bearer <editorial token>'});
     await authorized(request,env);
     if(path.startsWith('/api/pilots')){const response=await pilotRoute(request,env,path,now);if(response)return response;}
+    if(request.method==='GET'&&path==='/api/editorial-policy')return json(EDITORIAL_POLICY);
     if(request.method==='GET'&&path==='/api/lineup'){
       const target=Number(url.searchParams.get('minutes')??45);if(!Number.isInteger(target)||target<30||target>60)fail(400,'minutes must be an integer from 30 to 60');
       return json(await lineup(env,now,target));
